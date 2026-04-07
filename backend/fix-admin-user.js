@@ -1,16 +1,21 @@
-const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const User = require('./src/models/User');
+const { connectDB, query } = require('./src/database/postgres');
 
 async function fixAdminUser() {
   try {
-    // Connect to MongoDB
-    await mongoose.connect('mongodb://localhost:27017/hso_platform');
-    console.log('✅ Connected to MongoDB');
+    require('dotenv').config();
+    await connectDB();
+    console.log('✅ Connected to PostgreSQL');
 
     // Delete existing admin user
-    const deleteResult = await User.deleteMany({ email: 'favmoms440@gmail.com' });
-    console.log(`🗑️ Deleted ${deleteResult.deletedCount} existing admin users`);
+    const existing = await User.findByEmail('favmoms440@gmail.com');
+    if (existing) {
+      await query('DELETE FROM users WHERE id = $1', [existing.id]);
+      console.log('🗑️ Deleted existing admin user');
+    } else {
+      console.log('ℹ️ No existing admin user found');
+    }
 
     // Hash the password
     const saltRounds = 12;
@@ -18,7 +23,7 @@ async function fixAdminUser() {
     console.log('🔐 Password hashed successfully');
 
     // Create new admin user
-    const adminUser = new User({
+    const adminUser = await User.create({
       email: 'favmoms440@gmail.com',
       password_hash: passwordHash,
       first_name: 'Super',
@@ -26,16 +31,13 @@ async function fixAdminUser() {
       role: 'super_admin',
       is_verified: true,
       is_approved: true,
-      school_name: 'High School Observer',
-      created_at: new Date(),
-      updated_at: new Date()
+      school_name: 'High School Observer'
     });
 
-    await adminUser.save();
     console.log('✅ New admin user created successfully');
 
     // Verify the user was created
-    const savedUser = await User.findOne({ email: 'favmoms440@gmail.com' });
+    const savedUser = await User.findByEmail('favmoms440@gmail.com');
     console.log('📋 Admin user details:');
     console.log(`   Email: ${savedUser.email}`);
     console.log(`   Role: ${savedUser.role}`);
@@ -53,9 +55,6 @@ async function fixAdminUser() {
 
   } catch (error) {
     console.error('❌ Error:', error.message);
-  } finally {
-    await mongoose.disconnect();
-    console.log('🔌 Disconnected from MongoDB');
   }
 }
 

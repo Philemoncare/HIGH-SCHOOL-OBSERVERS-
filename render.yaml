@@ -17,5 +17,5 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      # Add the rest in Render Dashboard → Environment (MONGO_URI, JWT_SECRET, FRONTEND_URL, etc.)
+      # Add the rest in Render Dashboard → Environment (DB_HOST/DB_NAME/DB_USER/DB_PASSWORD, JWT_SECRET, FRONTEND_URL, etc.)
       # PORT is set automatically by Render

@@ -1,4 +1,3 @@
-const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
@@ -7,6 +6,7 @@ const User = require('./src/models/User');
 const Event = require('./src/models/Event');
 const News = require('./src/models/News');
 const DonationCampaign = require('./src/models/DonationCampaign');
+const { connectDB, query } = require('./src/database/postgres');
 
 // Published content (events, donations, news) is permanent. Only admin delete or
 // this script with --wipe can remove it. Normal server startup never wipes data.
@@ -24,23 +24,19 @@ const seedDatabase = async () => {
 
     console.log('🌱 Starting database seeding (--wipe confirmed)...');
     
-    // Connect to MongoDB
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/hso';
-    await mongoose.connect(mongoUri);
-    console.log('🔗 Connected to MongoDB');
+    await connectDB();
+    console.log('🔗 Connected to PostgreSQL');
 
     // Clear existing data (only when --wipe was passed)
     console.log('🧹 Clearing existing data...');
-    await User.deleteMany({});
-    await Event.deleteMany({});
-    await News.deleteMany({});
-    await DonationCampaign.deleteMany({});
+    // Truncate tables (safe for a dev reset). This will remove dependent rows too.
+    await query('TRUNCATE TABLE payments, orders, password_resets, newsletter_subscribers, leadership, donation_campaigns, news, events, user_sessions, users RESTART IDENTITY CASCADE');
 
     // Create super admin
     console.log('👑 Creating super admin...');
     const hashedPassword = await bcrypt.hash('@Qwerty1234', 12);
     
-    const superAdmin = new User({
+    const superAdmin = await User.create({
       first_name: 'Super',
       last_name: 'Admin',
       email: 'favmoms440@gmail.com',
@@ -49,11 +45,8 @@ const seedDatabase = async () => {
       is_verified: true,
       is_approved: true,
       phone: '+233000000000',
-      school_name: 'HSO System',
-      position: 'System Administrator'
+      school_name: 'HSO System'
     });
-
-    await superAdmin.save();
     console.log('✅ Super admin created successfully!');
 
     // Seed Events
@@ -73,7 +66,7 @@ const seedDatabase = async () => {
         registered: 145,
         status: "active",
         featured: true,
-        created_by: superAdmin._id
+        created_by: superAdmin.id
       },
       {
         title: "Technology Integration Workshop",
@@ -89,7 +82,7 @@ const seedDatabase = async () => {
         registered: 32,
         status: "active",
         featured: false,
-        created_by: superAdmin._id
+        created_by: superAdmin.id
       },
       {
         title: "Student Wellness Symposium",
@@ -105,11 +98,11 @@ const seedDatabase = async () => {
         registered: 89,
         status: "active",
         featured: true,
-        created_by: superAdmin._id
+        created_by: superAdmin.id
       }
     ];
 
-    await Event.insertMany(events);
+    await Promise.all(events.map(e => Event.create(e)));
     console.log(`✅ ${events.length} events created`);
 
     // Seed News Articles
@@ -127,7 +120,7 @@ const seedDatabase = async () => {
         status: "published",
         featured: true,
         view_count: 1250,
-        created_by: superAdmin._id,
+        created_by: superAdmin.id,
         published_at: new Date()
       },
       {
@@ -142,7 +135,7 @@ const seedDatabase = async () => {
         status: "published",
         featured: false,
         view_count: 890,
-        created_by: superAdmin._id,
+        created_by: superAdmin.id,
         published_at: new Date()
       },
       {
@@ -157,12 +150,12 @@ const seedDatabase = async () => {
         status: "published",
         featured: true,
         view_count: 1560,
-        created_by: superAdmin._id,
+        created_by: superAdmin.id,
         published_at: new Date()
       }
     ];
 
-    await News.insertMany(newsArticles);
+    await Promise.all(newsArticles.map(n => News.create(n)));
     console.log(`✅ ${newsArticles.length} news articles created`);
 
     // Seed Donation Campaigns
@@ -179,7 +172,7 @@ const seedDatabase = async () => {
         status: "active",
         featured: true,
         urgent: true,
-        created_by: superAdmin._id
+        created_by: superAdmin.id
       },
       {
         title: "Student Scholarship Program",
@@ -192,11 +185,11 @@ const seedDatabase = async () => {
         status: "active",
         featured: false,
         urgent: false,
-        created_by: superAdmin._id
+        created_by: superAdmin.id
       }
     ];
 
-    await DonationCampaign.insertMany(donationCampaigns);
+    await Promise.all(donationCampaigns.map(d => DonationCampaign.create(d)));
     console.log(`✅ ${donationCampaigns.length} donation campaigns created`);
 
     console.log('🎉 Database seeding completed successfully!');

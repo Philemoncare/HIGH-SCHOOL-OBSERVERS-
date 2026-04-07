@@ -104,7 +104,9 @@ async function checkPaymentSystem() {
       'PAYSTACK_SECRET_KEY',
       'PAYSTACK_PUBLIC_KEY',
       'FRONTEND_URL',
-      'MONGODB_URI',
+      'DB_HOST',
+      'DB_NAME',
+      'DB_USER',
       'JWT_SECRET'
     ];
     

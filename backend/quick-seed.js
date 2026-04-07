@@ -1,4 +1,3 @@
-const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
@@ -7,20 +6,19 @@ const User = require('./src/models/User');
 const Event = require('./src/models/Event');
 const News = require('./src/models/News');
 const DonationCampaign = require('./src/models/DonationCampaign');
+const { connectDB } = require('./src/database/postgres');
 
 const quickSeed = async () => {
   try {
     console.log('🌱 Quick seeding database...');
     
-    // Connect to MongoDB
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/hso';
-    await mongoose.connect(mongoUri);
-    console.log('🔗 Connected to MongoDB');
+    await connectDB();
+    console.log('🔗 Connected to PostgreSQL');
 
     // Check if data already exists
-    const existingEvents = await Event.countDocuments();
-    const existingNews = await News.countDocuments();
-    const existingCampaigns = await DonationCampaign.countDocuments();
+    const existingEvents = await Event.count();
+    const existingNews = await News.count();
+    const existingCampaigns = await DonationCampaign.count();
     
     if (existingEvents > 0 && existingNews > 0 && existingCampaigns > 0) {
       console.log('✅ Data already exists! Skipping seed.');
@@ -29,12 +27,13 @@ const quickSeed = async () => {
     }
 
     // Get or create super admin
-    let superAdmin = await User.findOne({ role: 'super_admin' });
+    let superAdmins = await User.find({ role: 'super_admin' }, { limit: 1 });
+    let superAdmin = superAdmins?.[0] || null;
     if (!superAdmin) {
       console.log('👑 Creating super admin...');
       const hashedPassword = await bcrypt.hash('@Qwerty1234', 12);
       
-      superAdmin = new User({
+      superAdmin = await User.create({
         first_name: 'Super',
         last_name: 'Admin',
         email: 'favmoms440@gmail.com',
@@ -43,11 +42,8 @@ const quickSeed = async () => {
         is_verified: true,
         is_approved: true,
         phone: '+233000000000',
-        school_name: 'HSO System',
-        position: 'System Administrator'
+        school_name: 'HSO System'
       });
-
-      await superAdmin.save();
       console.log('✅ Super admin created!');
     }
 
@@ -69,7 +65,7 @@ const quickSeed = async () => {
           registered: 145,
           status: "active",
           featured: true,
-          created_by: superAdmin._id
+          created_by: superAdmin.id
         },
         {
           title: "Technology Integration Workshop",
@@ -85,7 +81,7 @@ const quickSeed = async () => {
           registered: 32,
           status: "active",
           featured: false,
-          created_by: superAdmin._id
+          created_by: superAdmin.id
         },
         {
           title: "Student Wellness Symposium",
@@ -101,11 +97,11 @@ const quickSeed = async () => {
           registered: 89,
           status: "active",
           featured: true,
-          created_by: superAdmin._id
+          created_by: superAdmin.id
         }
       ];
 
-      await Event.insertMany(events);
+      await Promise.all(events.map(e => Event.create(e)));
       console.log(`✅ ${events.length} events created`);
     }
 
@@ -125,7 +121,7 @@ const quickSeed = async () => {
           status: "published",
           featured: true,
           view_count: 1250,
-          created_by: superAdmin._id,
+          created_by: superAdmin.id,
           published_at: new Date()
         },
         {
@@ -140,7 +136,7 @@ const quickSeed = async () => {
           status: "published",
           featured: false,
           view_count: 890,
-          created_by: superAdmin._id,
+          created_by: superAdmin.id,
           published_at: new Date()
         },
         {
@@ -155,12 +151,12 @@ const quickSeed = async () => {
           status: "published",
           featured: true,
           view_count: 1560,
-          created_by: superAdmin._id,
+          created_by: superAdmin.id,
           published_at: new Date()
         }
       ];
 
-      await News.insertMany(newsArticles);
+      await Promise.all(newsArticles.map(n => News.create(n)));
       console.log(`✅ ${newsArticles.length} news articles created`);
     }
 
@@ -179,7 +175,7 @@ const quickSeed = async () => {
           status: "active",
           featured: true,
           urgent: true,
-          created_by: superAdmin._id
+          created_by: superAdmin.id
         },
         {
           title: "Student Scholarship Program",
@@ -192,11 +188,11 @@ const quickSeed = async () => {
           status: "active",
           featured: false,
           urgent: false,
-          created_by: superAdmin._id
+          created_by: superAdmin.id
         }
       ];
 
-      await DonationCampaign.insertMany(donationCampaigns);
+      await Promise.all(donationCampaigns.map(d => DonationCampaign.create(d)));
       console.log(`✅ ${donationCampaigns.length} donation campaigns created`);
     }
 

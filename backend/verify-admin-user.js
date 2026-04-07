@@ -1,20 +1,18 @@
-const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const User = require('./src/models/User');
 require('dotenv').config();
+const { connectDB } = require('./src/database/postgres');
 
 async function verifyAdminUser() {
   try {
-    // Connect to MongoDB
-    const mongoUri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/hso_platform';
-    await mongoose.connect(mongoUri);
-    console.log('✅ Connected to MongoDB\n');
+    await connectDB();
+    console.log('✅ Connected to PostgreSQL\n');
 
     const email = 'favmoms440@gmail.com';
     const normalizedEmail = email.trim().toLowerCase();
     
     // Check if user exists
-    const user = await User.findOne({ email: normalizedEmail });
+    let user = await User.findByEmail(normalizedEmail);
     
     if (!user) {
       console.log('❌ Admin user NOT found in database!');
@@ -23,7 +21,7 @@ async function verifyAdminUser() {
       
       // Create the admin user
       const hashedPassword = await bcrypt.hash('@Qwerty1234', 12);
-      const newAdmin = new User({
+      const newAdmin = await User.create({
         first_name: 'Super',
         last_name: 'Admin',
         email: normalizedEmail,
@@ -32,11 +30,8 @@ async function verifyAdminUser() {
         is_verified: true,
         is_approved: true,
         phone: '+233000000000',
-        school_name: 'HSO System',
-        position: 'System Administrator'
+        school_name: 'HSO System'
       });
-      
-      await newAdmin.save();
       console.log('✅ Admin user created successfully!\n');
       
       // Verify password
@@ -65,8 +60,7 @@ async function verifyAdminUser() {
         if (!testPassword1 && !testPassword2) {
           console.log('\n⚠️  Password does not match! Resetting password...\n');
           const hashedPassword = await bcrypt.hash('@Qwerty1234', 12);
-          user.password_hash = hashedPassword;
-          await user.save();
+          user = await User.updateById(user.id || user._id, { password_hash: hashedPassword });
           console.log('✅ Password reset to: @Qwerty1234');
           
           // Verify new password
@@ -76,8 +70,7 @@ async function verifyAdminUser() {
       } else {
         console.log('\n⚠️  No password hash found! Setting password...\n');
         const hashedPassword = await bcrypt.hash('@Qwerty1234', 12);
-        user.password_hash = hashedPassword;
-        await user.save();
+        user = await User.updateById(user.id || user._id, { password_hash: hashedPassword });
         console.log('✅ Password set to: @Qwerty1234');
       }
     }
@@ -87,8 +80,7 @@ async function verifyAdminUser() {
     console.log('   🔑 Password: @Qwerty1234');
     console.log('   ⚠️  Note: Password starts with @ symbol!\n');
     
-    await mongoose.disconnect();
-    console.log('✅ Disconnected from MongoDB');
+    console.log('✅ Done');
     
   } catch (error) {
     console.error('❌ Error:', error.message);

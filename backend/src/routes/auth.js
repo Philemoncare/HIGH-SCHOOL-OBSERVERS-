@@ -1,7 +1,6 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
-const mongoose = require('mongoose');
 const User = require('../models/User');
 const Settings = require('../models/Settings');
 const { generateToken } = require('../middleware/auth');
@@ -29,11 +28,7 @@ router.post('/register', async (req, res) => {
       return res.status(503).json({ error: 'Registration is currently disabled. Please try again later or contact support.' });
     }
 
-    // Log database connection info
-    const dbName = mongoose.connection.db?.databaseName;
     console.log('=== REGISTRATION REQUEST ===');
-    console.log('Database:', dbName);
-    console.log('Connection state:', mongoose.connection.readyState === 1 ? 'Connected' : 'Not Connected');
     console.log('Request body:', { body: req.body });
     
     const { email, password, firstName, lastName } = req.body;
@@ -63,7 +58,7 @@ router.post('/register', async (req, res) => {
     if (existingUser) {
       console.log('⚠️  Registration failed - email already exists');
       console.log('Existing user details:', { 
-        id: existingUser._id, 
+        id: existingUser.id || existingUser._id, 
         email: existingUser.email,
         normalized_existing: existingUser.email?.toLowerCase().trim(),
         normalized_new: normalizedEmail,
@@ -81,16 +76,16 @@ router.post('/register', async (req, res) => {
         // Hash password
         const passwordHash = await bcrypt.hash(password, 10);
         
-        // Update existing user
-        existingUser.password_hash = passwordHash;
-        existingUser.first_name = firstName.trim();
-        existingUser.last_name = lastName.trim();
-        existingUser.email = normalizedEmail; // Ensure normalized email
-        await existingUser.save();
+        const updatedUser = await User.updateById(existingUser.id || existingUser._id, {
+          password_hash: passwordHash,
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          email: normalizedEmail
+        });
         
         console.log('✅ User updated successfully with password');
         
-        const userResponse = existingUser.toObject();
+        const userResponse = { ...(updatedUser || existingUser) };
         delete userResponse.password_hash;
         
         return res.status(200).json({ 
@@ -110,7 +105,7 @@ router.post('/register', async (req, res) => {
     console.log('Password hashed successfully');
 
     // Create new user (use normalized email)
-    const newUser = new User({
+    const newUser = await User.create({
       email: normalizedEmail,
       password_hash: passwordHash,
       first_name: firstName.trim(),
@@ -121,13 +116,10 @@ router.post('/register', async (req, res) => {
     });
 
     console.log('Attempting to save user:', { email: normalizedEmail, first_name: firstName.trim(), last_name: lastName.trim() });
-    console.log('Database before save:', dbName);
-    
-    await newUser.save();
-    console.log('✅ User saved successfully with ID:', newUser._id);
+    console.log('✅ User saved successfully with ID:', newUser.id || newUser._id);
     
     // Verify the user was actually saved
-    const verifyUser = await User.findById(newUser._id);
+    const verifyUser = await User.findById(newUser.id || newUser._id);
     if (!verifyUser) {
       console.error('❌ CRITICAL: User was not saved to database!');
       return res.status(500).json({ error: 'Failed to save user. Please try again.' });
@@ -135,7 +127,7 @@ router.post('/register', async (req, res) => {
     console.log('✅ Verified: User exists in database');
 
     // Return user without password
-    const userResponse = newUser.toObject();
+    const userResponse = { ...newUser };
     delete userResponse.password_hash;
 
     return res.status(201).json({ 
@@ -160,16 +152,11 @@ router.post('/register', async (req, res) => {
 
 router.post('/login', async (req, res) => {
   try {
-    // Log database connection info
-    const dbName = mongoose.connection.db?.databaseName;
     console.log('=== LOGIN REQUEST ===');
-    console.log('Database:', dbName);
-    console.log('Connection state:', mongoose.connection.readyState === 1 ? 'Connected' : 'Not Connected');
-
     const dbOk = await isDbReachable();
     if (!dbOk) {
       console.warn('⚠️ Login blocked - database not reachable');
-      return res.status(503).json({ error: 'Database not connected. Start MongoDB and try again.' });
+      return res.status(503).json({ error: 'Database not connected. Please try again later.' });
     }
 
     const { email, password } = req.body;
@@ -194,7 +181,7 @@ router.post('/login', async (req, res) => {
     }
     
     console.log('User found:', { 
-      id: user._id, 
+      id: user.id || user._id, 
       email: user.email,
       has_password: !!user.password_hash,
       role: user.role
@@ -227,7 +214,7 @@ router.post('/login', async (req, res) => {
 
     const userId = user.id || user._id;
     const token = generateToken({ id: userId, role: user.role });
-    const safeUser = typeof user.toObject === 'function' ? user.toObject() : { ...user };
+    const safeUser = { ...user };
     delete safeUser.password_hash;
     
     console.log('✅ Login successful for user:', user.email);
@@ -245,16 +232,11 @@ router.post('/login', async (req, res) => {
 
 router.post('/admin-login', async (req, res) => {
   try {
-    // Log database connection info
-    const dbName = mongoose.connection.db?.databaseName;
     console.log('=== ADMIN LOGIN REQUEST ===');
-    console.log('Database:', dbName);
-    console.log('Connection state:', mongoose.connection.readyState === 1 ? 'Connected' : 'Not Connected');
-
     const dbOk = await isDbReachable();
     if (!dbOk) {
       console.warn('⚠️ Admin login blocked - database not reachable');
-      return res.status(503).json({ error: 'Database not connected. Start MongoDB and try again.' });
+      return res.status(503).json({ error: 'Database not connected. Please try again later.' });
     }
 
     const { email, password } = req.body;
@@ -279,7 +261,7 @@ router.post('/admin-login', async (req, res) => {
     }
 
     console.log('User found:', {
-      id: user._id,
+      id: user.id || user._id,
       email: user.email,
       role: user.role,
       has_password: !!user.password_hash
@@ -303,7 +285,7 @@ router.post('/admin-login', async (req, res) => {
     console.log('✅ Password verified successfully');
 
     // Handle 2FA if enabled
-    if (user.twoFAEnabled || user.two_fa_enabled) {
+    if (user.two_fa_enabled) {
       console.log('2FA enabled, generating code...');
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       await User.updateById(user.id || user._id, {
@@ -317,7 +299,7 @@ router.post('/admin-login', async (req, res) => {
     // Generate token and return success
     const userId = user.id || user._id;
     const token = generateToken({ id: userId, role: user.role });
-    const safeUser = typeof user.toObject === 'function' ? user.toObject() : { ...user };
+    const safeUser = { ...user };
     delete safeUser.password_hash;
 
     console.log('✅ Admin login successful for user:', user.email);
@@ -342,18 +324,19 @@ router.post('/verify-2fa', async (req, res) => {
     const { email, code } = req.body;
     if (!email || !code) return res.status(400).json({ error: 'Email and code required' });
     const user = await findUserByEmail(email);
-    if (!user || !user.twoFACode || !user.twoFACodeExpires) {
+    if (!user || !user.two_fa_code || !user.two_fa_code_expires) {
       return res.status(400).json({ error: '2FA not initiated' });
     }
-    if (user.twoFACodeExpires < new Date() || user.twoFACode !== code) {
+    if (user.two_fa_code_expires < new Date() || user.two_fa_code !== code) {
       return res.status(400).json({ error: 'Invalid or expired code' });
     }
-    user.twoFACode = undefined;
-    user.twoFACodeExpires = undefined;
-    await user.save();
+    await User.updateById(user.id || user._id, {
+      two_fa_code: null,
+      two_fa_code_expires: null
+    });
 
-    const token = generateToken({ id: user._id, role: user.role });
-    const safeUser = user.toObject();
+    const token = generateToken({ id: user.id || user._id, role: user.role });
+    const safeUser = { ...user, two_fa_code: null, two_fa_code_expires: null };
     delete safeUser.password_hash;
     return res.json({ success: true, token, user: safeUser });
   } catch (error) {
@@ -367,9 +350,10 @@ router.post('/resend-2fa', async (req, res) => {
     const user = await findUserByEmail(email);
     if (!user) return res.status(404).json({ error: 'User not found' });
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    user.twoFACode = code;
-    user.twoFACodeExpires = new Date(Date.now() + 10 * 60 * 1000);
-    await user.save();
+    await User.updateById(user.id || user._id, {
+      two_fa_code: code,
+      two_fa_code_expires: new Date(Date.now() + 10 * 60 * 1000)
+    });
     return res.json({ success: true });
   } catch (error) {
     return res.status(500).json({ error: 'Server error' });
@@ -404,34 +388,37 @@ router.post('/google', async (req, res) => {
     }
 
     const normalizedEmail = normalizeEmail(email);
-    let user = await User.findOne({ $or: [{ googleId }, { email: normalizedEmail }] });
+    let user = await User.findByGoogleId(googleId);
+    if (!user) {
+      user = await User.findByEmail(normalizedEmail);
+    }
 
     if (user) {
-      if (!user.googleId) {
-        user.googleId = googleId;
-        user.provider = 'google';
-        if (profileImage) user.profile_image = profileImage;
-        user.first_name = user.first_name || firstName;
-        user.last_name = user.last_name || lastName;
-        await user.save();
+      if (!user.google_id) {
+        user = await User.updateById(user.id || user._id, {
+          google_id: googleId,
+          provider: 'google',
+          profile_image: profileImage || user.profile_image,
+          first_name: user.first_name || firstName,
+          last_name: user.last_name || lastName
+        });
       }
     } else {
-      user = new User({
+      user = await User.create({
         email: normalizedEmail,
         first_name: firstName,
         last_name: lastName || ' ',
-        googleId,
+        google_id: googleId,
         provider: 'google',
         profile_image: profileImage,
         role: 'user',
         is_verified: true,
         is_approved: true
       });
-      await user.save();
     }
 
-    const token = generateToken({ id: user._id, role: user.role });
-    const safeUser = user.toObject();
+    const token = generateToken({ id: user.id || user._id, role: user.role });
+    const safeUser = { ...user };
     delete safeUser.password_hash;
     return res.json({ success: true, message: 'Login successful', token, user: safeUser });
   } catch (error) {
@@ -506,7 +493,6 @@ router.post('/reset-password', async (req, res) => {
     const PasswordReset = require('../models/PasswordReset');
     const resetRecord = await PasswordReset.findOne({ 
       token, 
-      used: false,
       expiresAt: { $gt: new Date() }
     });
 
@@ -522,7 +508,7 @@ router.post('/reset-password', async (req, res) => {
 
     // Hash new password
     const passwordHash = await bcrypt.hash(newPassword, 10);
-    await User.findByIdAndUpdate(user._id, { password_hash: passwordHash });
+    await User.updateById(user.id || user._id, { password_hash: passwordHash });
 
     // Mark token as used
     resetRecord.used = true;

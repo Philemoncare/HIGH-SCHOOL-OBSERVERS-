@@ -130,11 +130,7 @@ router.put('/settings', authenticate, requireRole(['super_admin', 'executive', '
       maintenanceMode: typeof maintenanceMode === 'boolean' ? maintenanceMode : DEFAULT_SETTINGS.maintenanceMode,
       supportEmail: typeof supportEmail === 'string' && supportEmail.trim() ? supportEmail.trim() : DEFAULT_SETTINGS.supportEmail
     };
-    const doc = await Settings.findOneAndUpdate(
-      { key: 'platform' },
-      { $set: payload },
-      { new: true, upsert: true, runValidators: true }
-    ).lean();
+    const doc = await Settings.updateSettings('platform', payload);
     const settings = {
       allowRegistrations: doc.allowRegistrations,
       maintenanceMode: doc.maintenanceMode,

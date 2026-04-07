@@ -1,15 +1,14 @@
-const mongoose = require('mongoose');
 const User = require('./src/models/User');
+const { connectDB } = require('./src/database/postgres');
 
 async function checkAdminRole() {
   try {
-    // Connect to MongoDB
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/hso';
-    await mongoose.connect(mongoUri);
-    console.log('🔗 Connected to MongoDB');
+    require('dotenv').config();
+    await connectDB();
+    console.log('🔗 Connected to PostgreSQL');
 
     // Find the super admin
-    const superAdmin = await User.findOne({ email: 'favmoms440@gmail.com' });
+    const superAdmin = await User.findByEmail('favmoms440@gmail.com');
     
     if (!superAdmin) {
       console.log('❌ No super admin found with email: favmoms440@gmail.com');
@@ -32,16 +31,12 @@ async function checkAdminRole() {
       console.log('❌ User role is not admin:', superAdmin.role);
       console.log('💡 Updating role to super_admin...');
       
-      superAdmin.role = 'super_admin';
-      await superAdmin.save();
+      await User.updateById(superAdmin.id || superAdmin._id, { role: 'super_admin' });
       console.log('✅ Role updated to super_admin');
     }
     
   } catch (error) {
     console.error('❌ Error checking admin role:', error);
-  } finally {
-    await mongoose.disconnect();
-    console.log('🔌 Disconnected from MongoDB');
   }
 }
 

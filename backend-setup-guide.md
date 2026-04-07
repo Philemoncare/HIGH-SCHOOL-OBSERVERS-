@@ -8,25 +8,24 @@ cd backend
 npm install
 ```
 
-## Step 2: Install MongoDB
-Make sure MongoDB is installed and running on your system:
+## Step 2: Install PostgreSQL
+Make sure PostgreSQL is installed and running on your system:
 
 **Windows:**
-- Download MongoDB from https://www.mongodb.com/try/download/community
-- Install and start MongoDB service
-- Or run manually: `mongod --dbpath C:\data\db`
+- Install PostgreSQL (use the official installer)
+- Ensure the PostgreSQL service is running (Services → `postgresql-x64-*`)
 
 **macOS:**
 ```bash
-brew tap mongodb/brew
-brew install mongodb-community
-brew services start mongodb-community
+brew install postgresql@16
+brew services start postgresql@16
 ```
 
-**Linux:**
+**Linux (Ubuntu/Debian):**
 ```bash
-sudo apt-get install mongodb
-sudo systemctl start mongodb
+sudo apt-get update
+sudo apt-get install postgresql postgresql-contrib
+sudo systemctl enable --now postgresql
 ```
 
 ## Step 3: Create .env File
@@ -38,8 +37,12 @@ NODE_ENV=development
 PORT=5000
 FRONTEND_URL=http://localhost:5173
 
-# MongoDB Database
-MONGO_URI=mongodb://127.0.0.1:27017/hso_platform
+# PostgreSQL Database
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=hso_database
+DB_USER=postgres
+DB_PASSWORD=your_password
 
 # JWT Configuration
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production-make-it-long-and-random
@@ -79,8 +82,7 @@ npm start
 
 You should see:
 ```
-🔗 Attempting to connect to MongoDB: mongodb://127.0.0.1:27017/hso_platform
-✅ Connected to MongoDB database
+✅ Connected to PostgreSQL database
 🔗 Database connected, initializing super admin...
 ✅ Database initialization complete
 🚀 HSO Backend Server running on port 5000
@@ -111,11 +113,10 @@ If using Vite, make sure your `vite.config.js` has the proxy configured, or upda
 
 ## Troubleshooting
 
-### If you get MongoDB connection errors:
-- Make sure MongoDB is running: `mongod --version`
-- Check your `MONGO_URI` in `.env`
-- Try connecting manually: `mongosh mongodb://127.0.0.1:27017/hso_platform`
-- On Windows, ensure MongoDB service is running or start it manually
+### If you get PostgreSQL connection errors:
+- Make sure PostgreSQL service is running
+- Check your `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` in `.env`
+- Confirm you can connect using `psql` or pgAdmin
 
 ### If you get email errors:
 - Check your Gmail app password (not your regular password)

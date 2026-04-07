@@ -1,14 +1,15 @@
-const mongoose = require('mongoose');
 const User = require('./src/models/User');
+const { connectDB } = require('./src/database/postgres');
 
 async function checkDuplicates() {
   try {
-    // Connect to MongoDB
-    await mongoose.connect('mongodb://localhost:27017/hso_platform');
-    console.log('✅ Connected to MongoDB');
+    require('dotenv').config();
+    await connectDB();
+    console.log('✅ Connected to PostgreSQL');
 
     // Find all users with the admin email
-    const users = await User.find({ email: 'favmoms440@gmail.com' });
+    const u = await User.findByEmail('favmoms440@gmail.com');
+    const users = u ? [u] : [];
     console.log(`\n📊 Found ${users.length} users with email: favmoms440@gmail.com`);
 
     if (users.length === 0) {
@@ -25,7 +26,7 @@ async function checkDuplicates() {
     // Display details for each user
     users.forEach((user, index) => {
       console.log(`\n👤 User ${index + 1}:`);
-      console.log(`   ID: ${user._id}`);
+      console.log(`   ID: ${user.id || user._id}`);
       console.log(`   Email: ${user.email}`);
       console.log(`   Role: ${user.role}`);
       console.log(`   Name: ${user.first_name} ${user.last_name}`);
@@ -36,9 +37,8 @@ async function checkDuplicates() {
     });
 
     // Check for other admin users
-    const allAdmins = await User.find({ 
-      role: { $in: ['super_admin', 'executive'] } 
-    });
+    const allUsers = await User.find({});
+    const allAdmins = allUsers.filter(u2 => ['super_admin', 'executive', 'admin'].includes(u2.role));
     console.log(`\n👑 Total admin users in database: ${allAdmins.length}`);
     
     allAdmins.forEach((admin, index) => {
@@ -47,9 +47,6 @@ async function checkDuplicates() {
 
   } catch (error) {
     console.error('❌ Error:', error.message);
-  } finally {
-    await mongoose.disconnect();
-    console.log('\n🔌 Disconnected from MongoDB');
   }
 }
 

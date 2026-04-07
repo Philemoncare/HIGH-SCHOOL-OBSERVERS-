@@ -109,12 +109,11 @@ const verifyConsistency = async () => {
     const manualFilter = getManualPostsFilter();
     const publicFilter = getPublicPostsFilter();
     
-    const totalManual = await News.countDocuments(manualFilter);
-    const totalPublic = await News.countDocuments(publicFilter);
-    const totalPublished = await News.countDocuments({ 
-      status: 'published',
-      ...manualFilter 
-    });
+    // Postgres models don't implement `countDocuments`; use `count`.
+    // Also, "$exists" is not meaningful in SQL: `created_by IS NOT NULL` is the equivalent.
+    const totalManual = await News.count({ created_by: { $ne: null } });
+    const totalPublic = await News.count({ status: 'published', created_by: { $ne: null } });
+    const totalPublished = totalPublic;
     
     return {
       totalManual,

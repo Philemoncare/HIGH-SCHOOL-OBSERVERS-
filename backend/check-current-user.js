@@ -1,25 +1,22 @@
-const mongoose = require('mongoose');
 const User = require('./src/models/User');
-
-// Connect to MongoDB
-mongoose.connect('mongodb://localhost:27017/hso', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-});
+const { connectDB } = require('./src/database/postgres');
 
 async function checkCurrentUser() {
   try {
+    require('dotenv').config();
+    await connectDB();
     console.log('🔍 Checking current user state in database...');
     
     // Find the super admin user
-    const user = await User.findOne({ role: 'super_admin' });
+    const users = await User.find({ role: 'super_admin' }, { limit: 1 });
+    const user = users?.[0] || null;
     if (!user) {
       console.log('❌ No super admin user found');
       return;
     }
     
     console.log('👤 Current user data:', {
-      id: user._id,
+      id: user.id || user._id,
       email: user.email,
       first_name: user.first_name,
       last_name: user.last_name,
@@ -44,8 +41,6 @@ async function checkCurrentUser() {
     
   } catch (error) {
     console.error('❌ Error checking user:', error);
-  } finally {
-    mongoose.connection.close();
   }
 }
 

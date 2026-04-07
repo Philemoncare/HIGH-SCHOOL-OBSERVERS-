@@ -1,4 +1,3 @@
-const mongoose = require('mongoose');
 const Event = require('../models/Event');
 const News = require('../models/News');
 const DonationCampaign = require('../models/DonationCampaign');
@@ -12,9 +11,9 @@ const seedData = async () => {
   try {
     console.log('🌱 Checking if seed data is needed...');
 
-    const eventCount = await Event.countDocuments();
-    const newsCount = await News.countDocuments();
-    const donationCount = await DonationCampaign.countDocuments();
+    const eventCount = await Event.count();
+    const newsCount = await News.count();
+    const donationCount = await DonationCampaign.count();
 
     if (eventCount > 0 && newsCount > 0 && donationCount > 0) {
       console.log('✅ Database already has data - skipping seed (events:', eventCount, 'news:', newsCount, 'donations:', donationCount, ')');
@@ -23,8 +22,8 @@ const seedData = async () => {
 
     console.log('🌱 Seeding initial data (some collections are empty)...');
 
-    const superAdmin = await User.findOne({ role: 'super_admin' });
-    const createdBy = superAdmin?._id || null;
+    const superAdmins = await User.find({ role: 'super_admin' }, { limit: 1 });
+    const createdBy = superAdmins?.[0]?.id || null;
 
     // Seed Events
     const events = [
@@ -149,17 +148,17 @@ const seedData = async () => {
     // Only insert into empty collections - NEVER wipe existing data
     if (eventCount === 0) {
       const eventsWithCreatedBy = events.map(e => ({ ...e, created_by: createdBy }));
-      await Event.insertMany(eventsWithCreatedBy);
+      await Promise.all(eventsWithCreatedBy.map(e => Event.create(e)));
       console.log(`📅 ${events.length} events seeded`);
     }
     if (newsCount === 0) {
       const newsWithCreatedBy = newsArticles.map(n => ({ ...n, created_by: createdBy }));
-      await News.insertMany(newsWithCreatedBy);
+      await Promise.all(newsWithCreatedBy.map(n => News.create(n)));
       console.log(`📰 ${newsArticles.length} news articles seeded`);
     }
     if (donationCount === 0) {
       const donationsWithCreatedBy = donationCampaigns.map(d => ({ ...d, created_by: createdBy }));
-      await DonationCampaign.insertMany(donationsWithCreatedBy);
+      await Promise.all(donationsWithCreatedBy.map(d => DonationCampaign.create(d)));
       console.log(`💝 ${donationCampaigns.length} donation campaigns seeded`);
     }
 

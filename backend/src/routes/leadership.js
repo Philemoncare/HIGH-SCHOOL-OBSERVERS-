@@ -6,8 +6,7 @@ const { authenticate, requireRole } = require('../middleware/auth');
 // Get all leadership members (public)
 router.get('/', async (req, res) => {
   try {
-    const leadership = await Leadership.find({ is_active: true })
-      .sort({ order: 1, created_at: -1 });
+    const leadership = await Leadership.find({ is_active: true }, { sort: { order: 1 } });
     res.json(leadership);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching leadership team', error: error.message });
@@ -17,8 +16,7 @@ router.get('/', async (req, res) => {
 // Get all leadership members (admin only)
 router.get('/admin', authenticate, requireRole(['executive','admin','super_admin']), async (req, res) => {
   try {
-    const leadership = await Leadership.find()
-      .sort({ order: 1, created_at: -1 });
+    const leadership = await Leadership.find({}, { sort: { order: 1 } });
     res.json(leadership);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching leadership team', error: error.message });
@@ -78,22 +76,22 @@ router.post('/', authenticate, requireRole(['executive','admin','super_admin']),
         return res.status(409).json({ message: 'This email is already used by another member', error: 'Duplicate email' });
       }
     }
-    const leadership = new Leadership({
+    const created = await Leadership.create({
       name: nameTrim,
       title: titleTrim,
-      slug: slugVal || undefined,
-      email: emailVal || undefined,
+      slug: slugVal || null,
+      email: emailVal || null,
       bio: String(bio).trim(),
       image: image || null,
       avatar_emoji: avatar_emoji || '👤',
       social_links: social_links || {},
       order: order != null ? Number(order) : 0,
-      is_featured: !!is_featured
+      is_featured: !!is_featured,
+      is_active: true
     });
-    await leadership.save();
-    res.status(201).json(leadership);
+    res.status(201).json(created);
   } catch (error) {
-    if (error.code === 11000) {
+    if (String(error.message || '').toLowerCase().includes('duplicate') || error.code === '23505') {
       return res.status(409).json({ message: 'A leadership member with this email or slug already exists', error: 'Duplicate entry' });
     }
     res.status(400).json({ message: 'Error creating leadership member', error: error.message });
@@ -123,7 +121,7 @@ router.put('/:id', authenticate, requireRole(['executive','admin','super_admin']
     const nameTrim = name != null ? String(name).trim() : undefined;
     const titleTrim = title != null ? String(title).trim() : undefined;
     if (nameTrim && titleTrim) {
-      const duplicate = await Leadership.findOne({ name: nameTrim, title: titleTrim, _id: { $ne: req.params.id } });
+      const duplicate = await Leadership.findOne({ name: nameTrim, title: titleTrim });
       if (duplicate) {
         return res.status(409).json({ message: 'Another member already has this name and title', error: 'Duplicate entry' });
       }
@@ -154,15 +152,14 @@ router.put('/:id', authenticate, requireRole(['executive','admin','super_admin']
       ...(order !== undefined && { order: Number(order) }),
       ...(typeof is_active === 'boolean' && { is_active }),
       ...(typeof is_featured === 'boolean' && { is_featured }),
-      updated_at: new Date()
     };
-    const leadership = await Leadership.findByIdAndUpdate(req.params.id, update, { new: true });
+    const leadership = await Leadership.findByIdAndUpdate(req.params.id, update);
     if (!leadership) {
       return res.status(404).json({ message: 'Leadership member not found' });
     }
     res.json(leadership);
   } catch (error) {
-    if (error.code === 11000) {
+    if (String(error.message || '').toLowerCase().includes('duplicate') || error.code === '23505') {
       return res.status(409).json({ message: 'Email or slug already in use', error: 'Duplicate entry' });
     }
     res.status(400).json({ message: 'Error updating leadership member', error: error.message });

@@ -297,7 +297,7 @@ router.post('/shop/initialize', async (req, res) => {
       return res.status(404).json({ error: 'Product not found' });
     }
 
-    if (product.status !== 'active') {
+    if (product.in_stock === false) {
       return res.status(400).json({ error: 'Product is not available' });
     }
 
@@ -445,7 +445,7 @@ router.post('/shop/verify', async (req, res) => {
           order_id: order_id || null,
           paystack_reference: reference,
           paystack_data: verification.data,
-          metadata: new Map(Object.entries(metadata || {}))
+          metadata: metadata || {}
         });
         console.log('✅ Payment record created for shop purchase:', reference);
       } catch (paymentError) {
@@ -678,7 +678,7 @@ router.post('/events/verify', async (req, res) => {
           user_id: metadata.user_id || null,
           paystack_reference: reference,
           paystack_data: verification.data,
-          metadata: new Map(Object.entries(metadata || {}))
+          metadata: metadata || {}
         });
         console.log('✅ Payment record created for event registration:', reference);
       } catch (paymentError) {
@@ -847,15 +847,15 @@ router.get('/history', authenticate, requireRole(['super_admin', 'executive']), 
       }
     }
 
-    // Get payments with pagination
-    const payments = await Payment.find(query)
-      .sort({ created_at: -1 })
-      .skip(skip)
-      .limit(parseInt(limit))
-      .lean();
+    // Get payments with pagination (PostgreSQL)
+    const payments = await Payment.findAdvanced(query, {
+      sort: { created_at: -1 },
+      skip,
+      limit: parseInt(limit)
+    });
 
     // Get total count
-    const total = await Payment.countDocuments(query);
+    const total = await Payment.countAdvanced(query);
 
     res.json({
       payments,
@@ -995,7 +995,7 @@ router.post('/membership/verify', async (req, res) => {
           user_id: userId || null,
           paystack_reference: reference,
           paystack_data: verification.data,
-          metadata: new Map(Object.entries(metadata || {}))
+          metadata: metadata || {}
         });
         console.log('✅ Payment record created for membership:', reference);
       } catch (paymentError) {
@@ -1120,9 +1120,7 @@ router.get('/export', authenticate, requireRole(['super_admin', 'executive']), a
     }
 
     // Get all payments matching the query (no pagination for export)
-    const payments = await Payment.find(query)
-      .sort({ created_at: -1 })
-      .lean();
+    const payments = await Payment.findAdvanced(query, { sort: { created_at: -1 } });
 
     if (format === 'csv') {
       // Generate CSV

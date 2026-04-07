@@ -6,6 +6,9 @@ class Payment {
                VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`;
     
     // Gateway response stores ALL Mongoose schema properties that don't fit into the Postgres exact schema
+    const metadataObj =
+      data.metadata instanceof Map ? Object.fromEntries(data.metadata.entries()) : data.metadata;
+
     const gatewayResponse = {
       type: data.type,
       customer_name: data.customer_name,
@@ -14,7 +17,7 @@ class Payment {
       campaign_id: data.campaign_id,
       product_id: data.product_id,
       event_id: data.event_id,
-      metadata: data.metadata,
+      metadata: metadataObj,
       paystack_reference: data.paystack_reference,
       paystack_data: data.paystack_data,
       receipt_generated: data.receipt_generated,
@@ -75,6 +78,185 @@ class Payment {
 
     const r = await queryMany(q, vals);
     return r.map(doc => this.transform(doc));
+  }
+
+  static async findAdvanced(filter = {}, options = {}) {
+    let q = 'SELECT * FROM payments WHERE 1=1';
+    const vals = [];
+    let pi = 1;
+
+    if (filter.type && filter.type !== 'all') {
+      q += ` AND gateway_response->>'type' = $${pi}`;
+      vals.push(filter.type);
+      pi++;
+    }
+    if (filter.status && filter.status !== 'all') {
+      q += ` AND status = $${pi}`;
+      vals.push(filter.status);
+      pi++;
+    }
+
+    // $or regex search (reference, customer email, customer name)
+    if (Array.isArray(filter.$or) && filter.$or.length > 0) {
+      const orParts = [];
+      for (const cond of filter.$or) {
+        if (cond.reference?.$regex) {
+          orParts.push(`transaction_id ILIKE $${pi}`);
+          vals.push(`%${cond.reference.$regex}%`);
+          pi++;
+        }
+        if (cond.customer_email?.$regex) {
+          orParts.push(`gateway_response->>'customer_email' ILIKE $${pi}`);
+          vals.push(`%${cond.customer_email.$regex}%`);
+          pi++;
+        }
+        if (cond.customer_name?.$regex) {
+          orParts.push(`gateway_response->>'customer_name' ILIKE $${pi}`);
+          vals.push(`%${cond.customer_name.$regex}%`);
+          pi++;
+        }
+      }
+      if (orParts.length > 0) q += ` AND (${orParts.join(' OR ')})`;
+    }
+
+    // created_at range
+    if (filter.created_at) {
+      if (filter.created_at.$gte) {
+        q += ` AND created_at >= $${pi}`;
+        vals.push(filter.created_at.$gte);
+        pi++;
+      }
+      if (filter.created_at.$lte) {
+        q += ` AND created_at <= $${pi}`;
+        vals.push(filter.created_at.$lte);
+        pi++;
+      }
+    }
+
+    const sort = options.sort || { created_at: -1 };
+    const sortField = Object.keys(sort)[0] || 'created_at';
+    const sortOrder = sort[sortField] === -1 ? 'DESC' : 'ASC';
+    q += ` ORDER BY ${sortField} ${sortOrder}`;
+
+    if (options.limit) {
+      q += ` LIMIT $${pi}`;
+      vals.push(options.limit);
+      pi++;
+    }
+    if (options.skip) {
+      q += ` OFFSET $${pi}`;
+      vals.push(options.skip);
+      pi++;
+    }
+
+    const r = await queryMany(q, vals);
+    return r.map(doc => this.transform(doc));
+  }
+
+  static async countAdvanced(filter = {}) {
+    let q = 'SELECT COUNT(*) FROM payments WHERE 1=1';
+    const vals = [];
+    let pi = 1;
+
+    if (filter.type && filter.type !== 'all') {
+      q += ` AND gateway_response->>'type' = $${pi}`;
+      vals.push(filter.type);
+      pi++;
+    }
+    if (filter.status && filter.status !== 'all') {
+      q += ` AND status = $${pi}`;
+      vals.push(filter.status);
+      pi++;
+    }
+
+    if (Array.isArray(filter.$or) && filter.$or.length > 0) {
+      const orParts = [];
+      for (const cond of filter.$or) {
+        if (cond.reference?.$regex) {
+          orParts.push(`transaction_id ILIKE $${pi}`);
+          vals.push(`%${cond.reference.$regex}%`);
+          pi++;
+        }
+        if (cond.customer_email?.$regex) {
+          orParts.push(`gateway_response->>'customer_email' ILIKE $${pi}`);
+          vals.push(`%${cond.customer_email.$regex}%`);
+          pi++;
+        }
+        if (cond.customer_name?.$regex) {
+          orParts.push(`gateway_response->>'customer_name' ILIKE $${pi}`);
+          vals.push(`%${cond.customer_name.$regex}%`);
+          pi++;
+        }
+      }
+      if (orParts.length > 0) q += ` AND (${orParts.join(' OR ')})`;
+    }
+
+    if (filter.created_at) {
+      if (filter.created_at.$gte) {
+        q += ` AND created_at >= $${pi}`;
+        vals.push(filter.created_at.$gte);
+        pi++;
+      }
+      if (filter.created_at.$lte) {
+        q += ` AND created_at <= $${pi}`;
+        vals.push(filter.created_at.$lte);
+        pi++;
+      }
+    }
+
+    const r = await queryOne(q, vals);
+    return parseInt(r.count, 10) || 0;
+  }
+
+  // Backwards-compatible helpers for older Mongo-style code paths
+  static async countDocuments(filter = {}) {
+    return this.countAdvanced(filter);
+  }
+
+  static async count(filter = {}) {
+    let q = 'SELECT COUNT(*) FROM payments WHERE 1=1';
+    const vals = [];
+    let pi = 1;
+
+    if (filter.status) {
+      q += ` AND status = $${pi}`;
+      vals.push(filter.status);
+      pi++;
+    }
+    if (filter.type) {
+      q += ` AND gateway_response->>'type' = $${pi}`;
+      vals.push(filter.type);
+      pi++;
+    }
+
+    const r = await queryOne(q, vals);
+    return parseInt(r.count, 10) || 0;
+  }
+
+  static async aggregate(pipeline = []) {
+    // Minimal support for stats usage:
+    // [{ $match: {...} }, { $group: { _id: null, total: { $sum: '$amount' }}}]
+    const matchStage = pipeline.find(s => s && s.$match)?.$match || {};
+    const groupStage = pipeline.find(s => s && s.$group)?.$group;
+    if (!groupStage || !groupStage.total || !groupStage.total.$sum) return [];
+
+    let q = 'SELECT COALESCE(SUM(amount), 0) AS total FROM payments WHERE 1=1';
+    const vals = [];
+    let pi = 1;
+
+    if (matchStage.status) {
+      q += ` AND status = $${pi}`;
+      vals.push(matchStage.status);
+      pi++;
+    }
+    if (matchStage.type) {
+      q += ` AND gateway_response->>'type' = $${pi}`;
+      vals.push(matchStage.type);
+      pi++;
+    }
+
+    const r = await queryOne(q, vals);
+    return [{ _id: null, total: parseFloat(r.total) }];
   }
 
   static async updateById(id, data) {

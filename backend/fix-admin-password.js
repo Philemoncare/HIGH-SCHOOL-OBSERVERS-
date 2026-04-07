@@ -1,16 +1,16 @@
 const bcrypt = require('bcryptjs');
-const mongoose = require('mongoose');
 const User = require('./src/models/User');
+const { connectDB } = require('./src/database/postgres');
 
 async function fixAdminPassword() {
   try {
-    // Connect to MongoDB
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/hso';
-    await mongoose.connect(mongoUri);
-    console.log('🔗 Connected to MongoDB');
+    require('dotenv').config();
+    await connectDB();
+    console.log('🔗 Connected to PostgreSQL');
 
     // Find the super admin
-    const superAdmin = await User.findOne({ role: 'super_admin' });
+    const users = await User.find({ role: 'super_admin' }, { limit: 1 });
+    const superAdmin = users?.[0] || null;
     
     if (!superAdmin) {
       console.log('❌ No super admin found. Run npm run init:admin first.');
@@ -20,15 +20,14 @@ async function fixAdminPassword() {
     console.log('🔍 Found super admin:', superAdmin.email);
     
     // Check if password is already hashed (bcrypt hashes start with $2a$ or $2b$)
-    if (superAdmin.password_hash.startsWith('$2a$') || superAdmin.password_hash.startsWith('$2b$')) {
+    if (superAdmin.password_hash && (superAdmin.password_hash.startsWith('$2a$') || superAdmin.password_hash.startsWith('$2b$'))) {
       console.log('✅ Password is already properly hashed');
       return;
     }
 
     // Hash the password properly
     const passwordHash = await bcrypt.hash('@Qwerty1234', 10);
-    superAdmin.password_hash = passwordHash;
-    await superAdmin.save();
+    await User.updateById(superAdmin.id || superAdmin._id, { password_hash: passwordHash });
 
     console.log('✅ Super admin password fixed!');
     console.log('🔐 You can now log in with:');
@@ -37,9 +36,6 @@ async function fixAdminPassword() {
     
   } catch (error) {
     console.error('❌ Error fixing password:', error);
-  } finally {
-    await mongoose.disconnect();
-    console.log('🔌 Disconnected from MongoDB');
   }
 }
 

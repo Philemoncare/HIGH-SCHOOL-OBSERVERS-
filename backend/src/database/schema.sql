@@ -138,11 +138,15 @@ CREATE TABLE leadership (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
     position VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) UNIQUE,
     bio TEXT,
     image TEXT,
     email VARCHAR(255),
+    avatar_emoji VARCHAR(10),
+    social_links JSONB DEFAULT '{}',
     order_index INTEGER DEFAULT 0,
     featured BOOLEAN DEFAULT false,
+    is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

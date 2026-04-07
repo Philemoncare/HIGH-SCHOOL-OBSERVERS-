@@ -4,12 +4,12 @@
   "description": "HSO Platform Backend - Email Verification API",
   "main": "src/index.js",
   "scripts": {
-    "start": "\"C:\\Program Files\\nodejs\\node.exe\" src/index.js",
-    "dev": "\"C:\\Program Files\\nodejs\\nodemon.cmd\" src/index.js",
-    "lint": "\"C:\\Program Files\\nodejs\\node.exe\" scripts/ci-check.js",
-    "test": "\"C:\\Program Files\\nodejs\\node.exe\" scripts/ci-check.js",
-    "migrate": "\"C:\\Program Files\\nodejs\\node.exe\" src/database/migrate.js",
-    "setup:db": "\"C:\\Program Files\\nodejs\\npm.cmd\" run migrate && \"C:\\Program Files\\nodejs\\node.exe\" src/database/init.js"
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "lint": "node scripts/ci-check.js",
+    "test": "node scripts/ci-check.js",
+    "migrate": "node src/database/migrate.js",
+    "setup:db": "npm run migrate && node src/database/init.js"
   },
   "dependencies": {
     "@mailchimp/mailchimp_marketing": "^3.0.80",
@@ -23,7 +23,6 @@
     "google-auth-library": "^9.14.0",
     "helmet": "^7.2.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.0.0",
     "morgan": "^1.10.0",
     "multer": "^2.0.0",
     "nodemailer": "^6.10.1",

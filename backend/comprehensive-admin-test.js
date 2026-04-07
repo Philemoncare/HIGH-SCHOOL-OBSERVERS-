@@ -1,7 +1,7 @@
 const axios = require('axios');
-const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const User = require('./src/models/User');
+const { connectDB } = require('./src/database/postgres');
 
 async function comprehensiveAdminTest() {
   console.log('🔍 Comprehensive Admin Login Test');
@@ -10,12 +10,13 @@ async function comprehensiveAdminTest() {
   try {
     // 1. Test database connection
     console.log('\n1. Testing database connection...');
-    await mongoose.connect('mongodb://localhost:27017/hso_platform');
+    require('dotenv').config();
+    await connectDB();
     console.log('✅ Database connected successfully');
     
     // 2. Check if admin user exists
     console.log('\n2. Checking admin user in database...');
-    const adminUser = await User.findOne({ email: 'favmoms440@gmail.com' });
+    const adminUser = await User.findByEmail('favmoms440@gmail.com');
     if (!adminUser) {
       console.log('❌ Admin user not found in database');
       console.log('💡 Run: node fix-admin-user.js to create admin user');
@@ -83,12 +84,10 @@ async function comprehensiveAdminTest() {
   } catch (error) {
     console.error('\n❌ Test failed:', error.message);
     console.log('\n💡 Troubleshooting steps:');
-    console.log('   1. Make sure MongoDB is running');
+    console.log('   1. Make sure PostgreSQL is running and configured');
     console.log('   2. Start backend: cd backend && npm run dev');
     console.log('   3. Start frontend: cd frontend && npm run dev');
     console.log('   4. Create admin user: node fix-admin-user.js');
-  } finally {
-    await mongoose.disconnect();
   }
 }
 

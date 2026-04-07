@@ -16,7 +16,7 @@ class Settings {
     if (!result) return null;
     
     const transformed = this.transform(result);
-    // Support mongoose .lean() chained calls transparently
+    // Support legacy `.lean()` call sites transparently
     transformed.lean = () => transformed;
     return transformed;
   }
