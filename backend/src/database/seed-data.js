@@ -2,6 +2,8 @@ const Event = require('../models/Event');
 const News = require('../models/News');
 const DonationCampaign = require('../models/DonationCampaign');
 const User = require('../models/User');
+const Leadership = require('../models/Leadership');
+const { queryOne } = require('./postgres');
 
 // Published content (events, donations, news) is permanent: we never wipe.
 // We only insert sample data when a collection is empty (first run).
@@ -14,9 +16,11 @@ const seedData = async () => {
     const eventCount = await Event.count();
     const newsCount = await News.count();
     const donationCount = await DonationCampaign.count();
+    const leadershipCount = await queryOne('SELECT COUNT(*) FROM leadership');
+    const leadershipTotal = parseInt(leadershipCount?.count || '0', 10);
 
-    if (eventCount > 0 && newsCount > 0 && donationCount > 0) {
-      console.log('✅ Database already has data - skipping seed (events:', eventCount, 'news:', newsCount, 'donations:', donationCount, ')');
+    if (eventCount > 0 && newsCount > 0 && donationCount > 0 && leadershipTotal > 0) {
+      console.log('✅ Database already has data - skipping seed (events:', eventCount, 'news:', newsCount, 'donations:', donationCount, 'leadership:', leadershipTotal, ')');
       return;
     }
 
@@ -24,6 +28,58 @@ const seedData = async () => {
 
     const superAdmins = await User.find({ role: 'super_admin' }, { limit: 1 });
     const createdBy = superAdmins?.[0]?.id || null;
+
+    // Seed Leadership
+    const leadershipMembers = [
+      {
+        name: 'Philemon Care',
+        title: 'Founder & Program Lead',
+        slug: 'philemon-care',
+        bio: 'Leads platform strategy, partnerships, and youth programs across schools.',
+        avatar_emoji: '🧭',
+        department: 'Executive',
+        location: 'Ghana',
+        start_year: 2022,
+        highlights: ['Partnership development', 'Program design', 'School outreach'],
+        focus_areas: ['Student leadership', 'Education access', 'Community building'],
+        is_featured: true,
+        social_links: { email: 'info@hso.com' },
+        order: 1,
+        is_active: true
+      },
+      {
+        name: 'Programs Team',
+        title: 'Community & Outreach',
+        slug: 'programs-team',
+        bio: 'Coordinates school outreach, events, and community engagement.',
+        avatar_emoji: '🤝',
+        department: 'Programs',
+        location: 'Ghana',
+        start_year: 2023,
+        highlights: ['School reps network', 'Events coordination', 'Volunteer onboarding'],
+        focus_areas: ['Outreach', 'Events', 'Volunteer management'],
+        is_featured: false,
+        social_links: {},
+        order: 2,
+        is_active: true
+      },
+      {
+        name: 'Editorial Desk',
+        title: 'News & Publications',
+        slug: 'editorial-desk',
+        bio: 'Curates stories, school news, and long-form publications for students and partners.',
+        avatar_emoji: '📰',
+        department: 'Editorial',
+        location: 'Ghana',
+        start_year: 2023,
+        highlights: ['Newsroom workflow', 'Publishing standards', 'Student stories'],
+        focus_areas: ['Journalism', 'Storytelling', 'Publications'],
+        is_featured: false,
+        social_links: {},
+        order: 3,
+        is_active: true
+      }
+    ];
 
     // Seed Events
     const events = [
@@ -160,6 +216,10 @@ const seedData = async () => {
       const donationsWithCreatedBy = donationCampaigns.map(d => ({ ...d, created_by: createdBy }));
       await Promise.all(donationsWithCreatedBy.map(d => DonationCampaign.create(d)));
       console.log(`💝 ${donationCampaigns.length} donation campaigns seeded`);
+    }
+    if (leadershipTotal === 0) {
+      await Promise.all(leadershipMembers.map(m => Leadership.create(m)));
+      console.log(`👥 ${leadershipMembers.length} leadership members seeded`);
     }
 
     console.log('✅ Seed completed');

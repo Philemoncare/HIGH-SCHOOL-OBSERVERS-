@@ -33,6 +33,7 @@ import AdminPayments from './pages/AdminPayments'
 import AdminLeadership from './pages/AdminLeadership'
 import AdminMagazines from './pages/AdminMagazines'
 import Leadership from './pages/Leadership'
+import LeadershipProfile from './pages/LeadershipProfile'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import Contact from './pages/Contact'
@@ -69,6 +70,7 @@ function App() {
           <Route path="payment" element={<Payment />} />
           <Route path="executives" element={<Executives />} />
           <Route path="leadership" element={<Leadership />} />
+          <Route path="leadership/:slug" element={<LeadershipProfile />} />
           <Route path="login" element={<Login />} />
           <Route path="admin-login" element={<AdminLogin />} />
           <Route path="register" element={<Register />} />

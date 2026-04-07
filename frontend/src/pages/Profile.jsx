@@ -147,12 +147,7 @@ function Profile() {
       axios.get(`/api/users/${user._id}/activity`).then(res => {
         setRecentActivity(res.data.activity || [])
       }).catch(() => {
-        // fallback to mock if endpoint not available
-        setRecentActivity([
-          { id: 1, text: 'Logged in', time: '2 hours ago' },
-          { id: 2, text: 'Updated profile', time: '1 day ago' },
-          { id: 3, text: 'Registered for STEM Workshop', time: '3 days ago' },
-        ])
+        setRecentActivity([])
       }).finally(() => setActivityLoading(false))
     }
   }, [user])

@@ -2,8 +2,12 @@ const { queryOne, queryMany } = require('../database/postgres');
 
 class Leadership {
   static async create(data) {
-    const q = `INSERT INTO leadership (name, position, slug, bio, image, email, avatar_emoji, social_links, order_index, featured, is_active)
-               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`;
+    const q = `INSERT INTO leadership (
+                 name, position, slug, bio, image, email, avatar_emoji, social_links,
+                 department, location, start_year, highlights, focus_areas, calendly_link,
+                 order_index, featured, is_active
+               )
+               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING *`;
     const r = await queryOne(q, [
       data.name,
       data.title || data.position,
@@ -13,6 +17,12 @@ class Leadership {
       data.email || null,
       data.avatar_emoji || null,
       JSON.stringify(data.social_links || {}),
+      data.department || null,
+      data.location || null,
+      data.start_year != null ? Number(data.start_year) : null,
+      Array.isArray(data.highlights) ? data.highlights : [],
+      Array.isArray(data.focus_areas) ? data.focus_areas : [],
+      data.calendly_link || null,
       data.order != null ? Number(data.order) : 0,
       !!(data.is_featured ?? data.featured),
       data.is_active !== false
@@ -78,6 +88,12 @@ class Leadership {
       email: 'email',
       avatar_emoji: 'avatar_emoji',
       social_links: 'social_links',
+      department: 'department',
+      location: 'location',
+      start_year: 'start_year',
+      highlights: 'highlights',
+      focus_areas: 'focus_areas',
+      calendly_link: 'calendly_link',
       order: 'order_index',
       is_featured: 'featured',
       featured: 'featured',
@@ -90,6 +106,9 @@ class Leadership {
       fields.push(`${col} = $${pi}`);
       if (col === 'social_links') vals.push(JSON.stringify(v || {}));
       else if (col === 'order_index') vals.push(v != null ? Number(v) : 0);
+      else if (col === 'start_year') vals.push(v != null ? Number(v) : null);
+      else if (col === 'highlights') vals.push(Array.isArray(v) ? v : []);
+      else if (col === 'focus_areas') vals.push(Array.isArray(v) ? v : []);
       else vals.push(v);
       pi++;
     }
@@ -130,6 +149,12 @@ class Leadership {
       email: doc.email,
       avatar_emoji: doc.avatar_emoji,
       social_links: social,
+      department: doc.department,
+      location: doc.location,
+      start_year: doc.start_year,
+      highlights: doc.highlights || [],
+      focus_areas: doc.focus_areas || [],
+      calendly_link: doc.calendly_link,
       order: doc.order_index,
       is_featured: doc.featured,
       featured: doc.featured,

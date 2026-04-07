@@ -40,8 +40,11 @@ function AdminAnalyticsDashboard() {
   }
 
   const handleDownload = format => {
-    // TODO: Implement real download logic
-    alert(`Download as ${format} coming soon!`)
+    toast.dismiss('analytics-export')
+    toast('Export will be available soon.', {
+      id: 'analytics-export',
+      duration: 3000
+    })
   }
 
   return (

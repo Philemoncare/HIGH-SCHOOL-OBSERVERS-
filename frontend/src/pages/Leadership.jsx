@@ -2,7 +2,7 @@ import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import LeadershipDisplay from '../components/LeadershipDisplay';
-import { Globe, ArrowRight, MessageCircle, BookOpen } from 'lucide-react';
+import { Globe, ArrowRight, MessageCircle, BookOpen, Users } from 'lucide-react';
 
 function Leadership() {
   return (

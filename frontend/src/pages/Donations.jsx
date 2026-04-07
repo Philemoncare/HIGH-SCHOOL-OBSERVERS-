@@ -34,33 +34,8 @@ function Donations() {
       setTotalPages(response.data.pagination.total)
     } catch (error) {
       console.error('Error fetching campaigns:', error)
-      // Fallback to mock data if API fails
-      setCampaigns([
-        {
-          _id: 1,
-          title: "School Infrastructure Improvement",
-          description: "Help us improve school infrastructure by providing better facilities, modern equipment, and safe learning environments for students across the region.",
-          category: "education",
-          beneficiary: "Regional Schools Development Fund",
-          raised_amount: 32000,
-          goal_amount: 50000,
-          image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400&h=250&fit=crop",
-          featured: true,
-          urgent: true
-        },
-        {
-          _id: 2,
-          title: "Student Scholarship Program",
-          description: "Support bright students from underprivileged backgrounds by providing scholarships for their education. Every contribution makes a difference in a student's life.",
-          category: "education",
-          beneficiary: "Student Scholarship Foundation",
-          raised_amount: 18500,
-          goal_amount: 25000,
-          image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=250&fit=crop",
-          featured: false,
-          urgent: false
-        }
-      ])
+      setError('Unable to load donation campaigns right now. Please try again shortly.')
+      setCampaigns([])
     } finally {
       setLoading(false)
     }

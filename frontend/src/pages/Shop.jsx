@@ -31,14 +31,13 @@ function Shop() {
       setLoading(true)
       setError(null)
       
-      // First check if backend is reachable
+      // First check if backend + shop API are reachable
       try {
-        const healthCheck = await axios.get('/api/health', { timeout: 5000 })
-        console.log('Backend health check:', healthCheck.data)
-        
-        // Check database connection when backend reports it
-        if (healthCheck.data.database && !healthCheck.data.database.connected) {
-          console.warn('Database not connected:', healthCheck.data.database)
+        const healthCheck = await axios.get('/api/shop/public/health', { timeout: 5000 })
+        console.log('Shop health check:', healthCheck.data)
+
+        if (healthCheck.data?.database && healthCheck.data.database.connected === false) {
+          console.warn('Shop database not connected:', healthCheck.data.database)
           throw new Error('Database is not connected. Please try again later or contact support.')
         }
       } catch (healthError) {

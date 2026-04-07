@@ -1,4 +1,6 @@
 const bcrypt = require('bcryptjs');
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '..', '..', '.env') });
 const { queryOne, queryMany, transaction } = require('./postgres');
 const seedData = require('./seed-data');
 

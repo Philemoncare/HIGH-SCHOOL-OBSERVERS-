@@ -52,7 +52,10 @@ router.get('/:id', async (req, res) => {
 // Create new leadership member (admin only) – unique by name+title
 router.post('/', authenticate, requireRole(['executive','admin','super_admin']), async (req, res) => {
   try {
-    const { name, title, slug, email, bio, image, avatar_emoji, social_links, order, is_featured } = req.body;
+    const {
+      name, title, slug, email, bio, image, avatar_emoji, social_links, order, is_featured,
+      department, location, start_year, highlights, focus_areas, calendly_link
+    } = req.body;
     if (!name || !title || !bio) {
       return res.status(400).json({ message: 'Name, title, and bio are required', error: 'Validation failed' });
     }
@@ -85,6 +88,12 @@ router.post('/', authenticate, requireRole(['executive','admin','super_admin']),
       image: image || null,
       avatar_emoji: avatar_emoji || '👤',
       social_links: social_links || {},
+      department: department ? String(department).trim() : null,
+      location: location ? String(location).trim() : null,
+      start_year: start_year != null && start_year !== '' ? Number(start_year) : null,
+      highlights: Array.isArray(highlights) ? highlights : [],
+      focus_areas: Array.isArray(focus_areas) ? focus_areas : [],
+      calendly_link: calendly_link ? String(calendly_link).trim() : null,
       order: order != null ? Number(order) : 0,
       is_featured: !!is_featured,
       is_active: true
@@ -117,26 +126,29 @@ router.put('/reorder', authenticate, requireRole(['executive','admin','super_adm
 // Update leadership member (admin only) – enforce unique name+title (excluding self)
 router.put('/:id', authenticate, requireRole(['executive','admin','super_admin']), async (req, res) => {
   try {
-    const { name, title, slug, email, bio, image, avatar_emoji, social_links, order, is_active, is_featured } = req.body;
+    const {
+      name, title, slug, email, bio, image, avatar_emoji, social_links, order, is_active, is_featured,
+      department, location, start_year, highlights, focus_areas, calendly_link
+    } = req.body;
     const nameTrim = name != null ? String(name).trim() : undefined;
     const titleTrim = title != null ? String(title).trim() : undefined;
     if (nameTrim && titleTrim) {
       const duplicate = await Leadership.findOne({ name: nameTrim, title: titleTrim });
-      if (duplicate) {
+      if (duplicate && String(duplicate.id) !== String(req.params.id)) {
         return res.status(409).json({ message: 'Another member already has this name and title', error: 'Duplicate entry' });
       }
     }
     const slugVal = slug !== undefined ? (slug ? String(slug).trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') : null) : undefined;
     if (slugVal) {
-      const slugExists = await Leadership.findOne({ slug: slugVal, _id: { $ne: req.params.id } });
-      if (slugExists) {
+      const slugExists = await Leadership.findOne({ slug: slugVal });
+      if (slugExists && String(slugExists.id) !== String(req.params.id)) {
         return res.status(409).json({ message: 'This URL slug is already in use', error: 'Duplicate slug' });
       }
     }
     const emailVal = email !== undefined ? (email ? String(email).trim().toLowerCase() : null) : undefined;
     if (emailVal) {
-      const emailExists = await Leadership.findOne({ email: emailVal, _id: { $ne: req.params.id } });
-      if (emailExists) {
+      const emailExists = await Leadership.findOne({ email: emailVal });
+      if (emailExists && String(emailExists.id) !== String(req.params.id)) {
         return res.status(409).json({ message: 'This email is already used by another member', error: 'Duplicate email' });
       }
     }
@@ -149,6 +161,12 @@ router.put('/:id', authenticate, requireRole(['executive','admin','super_admin']
       ...(image !== undefined && { image: image || null }),
       ...(avatar_emoji !== undefined && { avatar_emoji: avatar_emoji || '👤' }),
       ...(social_links !== undefined && { social_links: social_links || {} }),
+      ...(department !== undefined && { department: department ? String(department).trim() : null }),
+      ...(location !== undefined && { location: location ? String(location).trim() : null }),
+      ...(start_year !== undefined && { start_year: start_year != null && start_year !== '' ? Number(start_year) : null }),
+      ...(highlights !== undefined && { highlights: Array.isArray(highlights) ? highlights : [] }),
+      ...(focus_areas !== undefined && { focus_areas: Array.isArray(focus_areas) ? focus_areas : [] }),
+      ...(calendly_link !== undefined && { calendly_link: calendly_link ? String(calendly_link).trim() : null }),
       ...(order !== undefined && { order: Number(order) }),
       ...(typeof is_active === 'boolean' && { is_active }),
       ...(typeof is_featured === 'boolean' && { is_featured }),

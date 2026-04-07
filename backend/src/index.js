@@ -4,7 +4,8 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const { connectDB } = require('./database/postgres');
 const initializeDatabase = require('./database/init');
@@ -139,9 +140,14 @@ app.get('/api/health', async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({
-      status: 'ERROR',
+    // Return 200 even when DB is down so the frontend can distinguish
+    // "backend unreachable" from "database not connected".
+    res.json({
+      status: 'DEGRADED',
       timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development',
+      server: 'HSO Backend API',
+      version: '1.0.0',
       error: error.message,
       database: {
         status: 'error',

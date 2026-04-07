@@ -19,7 +19,7 @@ function AdminContent() {
   }
   const handleDelete = (type, item) => {
     if (window.confirm(`Delete this ${type}?`)) {
-      // TODO: API call to delete
+      // Deletion is handled inside each tab/modal flow.
     }
   }
 

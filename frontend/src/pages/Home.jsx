@@ -543,7 +543,7 @@ function Home() {
           </div>
         </motion.section>
 
-        <LeadershipDisplay />
+        <LeadershipDisplay variant="home" />
 
         <motion.section
           className="relative py-24 overflow-hidden"
