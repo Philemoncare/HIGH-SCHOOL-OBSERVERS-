@@ -1,0 +1,185 @@
+const express = require('express');
+const router = express.Router();
+const Leadership = require('../models/Leadership');
+const { authenticate, requireRole } = require('../middleware/auth');
+
+// Get all leadership members (public)
+router.get('/', async (req, res) => {
+  try {
+    const leadership = await Leadership.find({ is_active: true })
+      .sort({ order: 1, created_at: -1 });
+    res.json(leadership);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching leadership team', error: error.message });
+  }
+});
+
+// Get all leadership members (admin only)
+router.get('/admin', authenticate, requireRole(['executive','admin','super_admin']), async (req, res) => {
+  try {
+    const leadership = await Leadership.find()
+      .sort({ order: 1, created_at: -1 });
+    res.json(leadership);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching leadership team', error: error.message });
+  }
+});
+
+// Get single leadership member by slug (public) – must be before /:id
+router.get('/by-slug/:slug', async (req, res) => {
+  try {
+    const leadership = await Leadership.findOne({ slug: req.params.slug, is_active: true });
+    if (!leadership) {
+      return res.status(404).json({ message: 'Leadership member not found' });
+    }
+    res.json(leadership);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching leadership member', error: error.message });
+  }
+});
+
+// Get single leadership member by id (public)
+router.get('/:id', async (req, res) => {
+  try {
+    const leadership = await Leadership.findById(req.params.id);
+    if (!leadership) {
+      return res.status(404).json({ message: 'Leadership member not found' });
+    }
+    res.json(leadership);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching leadership member', error: error.message });
+  }
+});
+
+// Create new leadership member (admin only) – unique by name+title
+router.post('/', authenticate, requireRole(['executive','admin','super_admin']), async (req, res) => {
+  try {
+    const { name, title, slug, email, bio, image, avatar_emoji, social_links, order, is_featured } = req.body;
+    if (!name || !title || !bio) {
+      return res.status(400).json({ message: 'Name, title, and bio are required', error: 'Validation failed' });
+    }
+    const nameTrim = String(name).trim();
+    const titleTrim = String(title).trim();
+    const existing = await Leadership.findOne({ name: nameTrim, title: titleTrim });
+    if (existing) {
+      return res.status(409).json({ message: 'A leadership member with this name and title already exists', error: 'Duplicate entry' });
+    }
+    const slugVal = slug ? String(slug).trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') : undefined;
+    if (slugVal) {
+      const slugExists = await Leadership.findOne({ slug: slugVal });
+      if (slugExists) {
+        return res.status(409).json({ message: 'This URL slug is already in use', error: 'Duplicate slug' });
+      }
+    }
+    const emailVal = email ? String(email).trim().toLowerCase() : undefined;
+    if (emailVal) {
+      const emailExists = await Leadership.findOne({ email: emailVal });
+      if (emailExists) {
+        return res.status(409).json({ message: 'This email is already used by another member', error: 'Duplicate email' });
+      }
+    }
+    const leadership = new Leadership({
+      name: nameTrim,
+      title: titleTrim,
+      slug: slugVal || undefined,
+      email: emailVal || undefined,
+      bio: String(bio).trim(),
+      image: image || null,
+      avatar_emoji: avatar_emoji || '👤',
+      social_links: social_links || {},
+      order: order != null ? Number(order) : 0,
+      is_featured: !!is_featured
+    });
+    await leadership.save();
+    res.status(201).json(leadership);
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({ message: 'A leadership member with this email or slug already exists', error: 'Duplicate entry' });
+    }
+    res.status(400).json({ message: 'Error creating leadership member', error: error.message });
+  }
+});
+
+// Reorder leadership members (admin only) – must be before PUT /:id
+router.put('/reorder', authenticate, requireRole(['executive','admin','super_admin']), async (req, res) => {
+  try {
+    const { orderData } = req.body; // Array of { id, order }
+    if (!Array.isArray(orderData) || orderData.length === 0) {
+      return res.status(400).json({ message: 'orderData array is required' });
+    }
+    for (const item of orderData) {
+      await Leadership.findByIdAndUpdate(item.id, { order: item.order });
+    }
+    res.json({ message: 'Leadership team reordered successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error reordering leadership team', error: error.message });
+  }
+});
+
+// Update leadership member (admin only) – enforce unique name+title (excluding self)
+router.put('/:id', authenticate, requireRole(['executive','admin','super_admin']), async (req, res) => {
+  try {
+    const { name, title, slug, email, bio, image, avatar_emoji, social_links, order, is_active, is_featured } = req.body;
+    const nameTrim = name != null ? String(name).trim() : undefined;
+    const titleTrim = title != null ? String(title).trim() : undefined;
+    if (nameTrim && titleTrim) {
+      const duplicate = await Leadership.findOne({ name: nameTrim, title: titleTrim, _id: { $ne: req.params.id } });
+      if (duplicate) {
+        return res.status(409).json({ message: 'Another member already has this name and title', error: 'Duplicate entry' });
+      }
+    }
+    const slugVal = slug !== undefined ? (slug ? String(slug).trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') : null) : undefined;
+    if (slugVal) {
+      const slugExists = await Leadership.findOne({ slug: slugVal, _id: { $ne: req.params.id } });
+      if (slugExists) {
+        return res.status(409).json({ message: 'This URL slug is already in use', error: 'Duplicate slug' });
+      }
+    }
+    const emailVal = email !== undefined ? (email ? String(email).trim().toLowerCase() : null) : undefined;
+    if (emailVal) {
+      const emailExists = await Leadership.findOne({ email: emailVal, _id: { $ne: req.params.id } });
+      if (emailExists) {
+        return res.status(409).json({ message: 'This email is already used by another member', error: 'Duplicate email' });
+      }
+    }
+    const update = {
+      ...(nameTrim !== undefined && { name: nameTrim }),
+      ...(titleTrim !== undefined && { title: titleTrim }),
+      ...(slugVal !== undefined && { slug: slugVal || null }),
+      ...(emailVal !== undefined && { email: emailVal || null }),
+      ...(bio !== undefined && { bio: String(bio).trim() }),
+      ...(image !== undefined && { image: image || null }),
+      ...(avatar_emoji !== undefined && { avatar_emoji: avatar_emoji || '👤' }),
+      ...(social_links !== undefined && { social_links: social_links || {} }),
+      ...(order !== undefined && { order: Number(order) }),
+      ...(typeof is_active === 'boolean' && { is_active }),
+      ...(typeof is_featured === 'boolean' && { is_featured }),
+      updated_at: new Date()
+    };
+    const leadership = await Leadership.findByIdAndUpdate(req.params.id, update, { new: true });
+    if (!leadership) {
+      return res.status(404).json({ message: 'Leadership member not found' });
+    }
+    res.json(leadership);
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({ message: 'Email or slug already in use', error: 'Duplicate entry' });
+    }
+    res.status(400).json({ message: 'Error updating leadership member', error: error.message });
+  }
+});
+
+// Delete leadership member (admin only)
+router.delete('/:id', authenticate, requireRole(['executive','admin','super_admin']), async (req, res) => {
+  try {
+    const leadership = await Leadership.findByIdAndDelete(req.params.id);
+    if (!leadership) {
+      return res.status(404).json({ message: 'Leadership member not found' });
+    }
+    res.json({ message: 'Leadership member deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting leadership member', error: error.message });
+  }
+});
+
+module.exports = router; 

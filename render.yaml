@@ -1,0 +1,21 @@
+# Render Blueprint: HSO Backend API
+# Deploy from Dashboard: New → Blueprint → Connect repo and use this file.
+# Or create a Web Service manually and set Root Directory to "backend".
+
+services:
+  - type: web
+    name: hso-backend
+    runtime: node
+    rootDir: backend
+
+    buildCommand: npm install
+    startCommand: npm start
+
+    # Health check (Render pings this to know when the service is up)
+    healthCheckPath: /api/health
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Add the rest in Render Dashboard → Environment (MONGO_URI, JWT_SECRET, FRONTEND_URL, etc.)
+      # PORT is set automatically by Render

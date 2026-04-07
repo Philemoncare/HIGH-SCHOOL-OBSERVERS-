@@ -1,0 +1,48 @@
+{
+  "name": "hso-platform",
+  "version": "1.0.0",
+  "description": "High School Observer (HSO) Platform - A comprehensive web platform for school representatives, executives, and public users",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "npm run build:backend && npm run build:frontend",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "setup:db": "cd backend && npm run setup:db",
+    "test": "npm run test:backend && npm run test:frontend",
+    "test:backend": "cd backend && npm test",
+    "test:frontend": "cd frontend && npm test"
+  },
+  "keywords": [
+    "education",
+    "school",
+    "platform",
+    "events",
+    "donations",
+    "news",
+    "magazine"
+  ],
+  "author": "HSO Development Team",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "dependencies": {
+    "@tailwindcss/aspect-ratio": "^0.4.2",
+    "@tailwindcss/forms": "^0.5.10",
+    "@tailwindcss/typography": "^0.5.16",
+    "autoprefixer": "^10.4.21",
+    "express-rate-limit": "^8.0.1",
+    "postcss": "^8.5.6",
+    "react-quill": "^2.0.0",
+    "recharts": "^3.1.0",
+    "tailwindcss": "^4.1.11"
+  }
+}
