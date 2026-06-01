@@ -1,3 +1,4 @@
+require('dotenv').config();
 const { connectDB, queryOne, queryMany } = require('./src/database/postgres');
 const bcrypt = require('bcryptjs');
 

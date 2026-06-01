@@ -61,6 +61,14 @@ function About() {
     setIsFullscreen(!isFullscreen)
   }
 
+  // Smooth scroll function
+  const scrollToSection = (sectionId) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
   // Timeline data
   const timelineData = [
     {
@@ -204,8 +212,8 @@ function About() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.7, delay: 0.2 }}
               >
-                <motion.a href="#timeline" whileHover={{ y: -2, scale: 1.03 }} whileTap={{ scale: 0.98 }} className="inline-flex items-center px-6 py-3 rounded-lg bg-white text-gray-900 font-semibold shadow hover:bg-gray-100">Explore Journey</motion.a>
-                <motion.a href="#values" whileHover={{ y: -2, scale: 1.03 }} whileTap={{ scale: 0.98 }} className="inline-flex items-center px-6 py-3 rounded-lg border border-white/70 text-white font-semibold hover:bg-white/10">Our Values</motion.a>
+                <motion.button onClick={() => scrollToSection('timeline')} whileHover={{ y: -2, scale: 1.03 }} whileTap={{ scale: 0.98 }} className="inline-flex items-center px-6 py-3 rounded-lg bg-white text-gray-900 font-semibold shadow hover:bg-gray-100">Explore Journey</motion.button>
+                <motion.button onClick={() => scrollToSection('values')} whileHover={{ y: -2, scale: 1.03 }} whileTap={{ scale: 0.98 }} className="inline-flex items-center px-6 py-3 rounded-lg border border-white/70 text-white font-semibold hover:bg-white/10">Our Values</motion.button>
               </motion.div>
             </div>
           </div>

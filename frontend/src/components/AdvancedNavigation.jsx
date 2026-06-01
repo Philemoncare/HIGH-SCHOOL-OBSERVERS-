@@ -175,7 +175,7 @@ const AdvancedNavigation = () => {
                     HSO
                   </span>
                 </Link>
-                <div className="hidden lg:flex items-center gap-0.5 flex-1 justify-center max-w-2xl mx-6">
+                <div className="hidden lg:flex items-center gap-0.5 flex-1 justify-center max-w-2xl mx-6 flex-wrap">
                   {navigation.map((item) => {
                     const Icon = item.icon
                     const isActiveState = isActive(item.href)
@@ -184,7 +184,7 @@ const AdvancedNavigation = () => {
                         key={item.name}
                         to={item.href}
                         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all duration-300 font-medium text-sm whitespace-nowrap ${
+                        className={`flex items-center gap-1.5 px-3 py-2.5 rounded-lg transition-all duration-300 font-medium text-sm whitespace-nowrap min-h-[44px] ${
                           isActiveState 
                             ? 'bg-red-50 text-red-700 border border-red-200' 
                             : 'text-gray-600 hover:bg-red-50 hover:text-red-700'
@@ -320,7 +320,7 @@ const AdvancedNavigation = () => {
                   )}
                 </div>
               <button 
-                className="lg:hidden p-2 rounded-xl hover:bg-gray-100 transition-all duration-200 flex-shrink-0"
+                className="lg:hidden p-3 rounded-xl hover:bg-gray-100 transition-all duration-200 flex-shrink-0 min-h-[44px] min-w-[44px]"
                 onClick={() => setMobileOpen(!mobileOpen)}
                 aria-label="Toggle menu"
               >
@@ -372,7 +372,7 @@ const AdvancedNavigation = () => {
                   <Link
                     key={item.name}
                     to={item.href}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-base ${
+                    className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 text-base min-h-[44px] ${
                       isActiveState 
                         ? 'bg-red-50 text-red-700 border border-red-200 shadow-sm' 
                         : 'text-gray-700 hover:bg-gray-50'

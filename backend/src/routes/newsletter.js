@@ -96,7 +96,7 @@ router.post('/subscribe', async (req, res) => {
 
     try {
       const normalized = email.toLowerCase().trim();
-      const existing = await NewsletterSubscriber.findByEmail(normalized);
+      const existing = await NewsletterSubscriber.findOne({ email: normalized });
       if (existing) {
         return res.status(200).json({ success: true, message: 'Already subscribed' });
       }

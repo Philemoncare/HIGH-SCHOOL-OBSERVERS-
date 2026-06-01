@@ -8,64 +8,69 @@ const schemaPath = path.join(__dirname, 'src/database/schema.sql');
 const schema = fs.readFileSync(schemaPath, 'utf8');
 const allStatements = schema.split(';').map(stmt => stmt.trim());
 
-// Separate CREATE TYPE and CREATE TABLE statements
+// Separate statements by type
+const extensionStatements = allStatements.filter(stmt => {
+  const upperStmt = stmt.toUpperCase().trim();
+  return upperStmt.startsWith('CREATE EXTENSION');
+});
+
 const createTypeStatements = allStatements.filter(stmt => {
-  const upperStmt = stmt.toUpperCase().replace(/\s+/g, ' ');
-  return upperStmt.includes('CREATE TYPE') || upperStmt.startsWith('CREATE TYPE');
+  const upperStmt = stmt.toUpperCase().trim();
+  return upperStmt.startsWith('CREATE TYPE');
 });
 
 const createTableStatements = allStatements.filter(stmt => {
-  const upperStmt = stmt.toUpperCase().replace(/\s+/g, ' ');
-  return upperStmt.includes('CREATE TABLE') || upperStmt.startsWith('CREATE TABLE');
+  const upperStmt = stmt.toUpperCase().trim();
+  return upperStmt.startsWith('CREATE TABLE');
 });
 
-console.log(`🚀 Creating ${createTypeStatements.length} types and ${createTableStatements.length} tables...`);
+const indexStatements = allStatements.filter(stmt => {
+  const upperStmt = stmt.toUpperCase().trim();
+  return upperStmt.startsWith('CREATE INDEX');
+});
 
-// Execute CREATE TYPE statements first
-const createTypes = async () => {
-  console.log('📝 Creating types...');
-  for (let i = 0; i < createTypeStatements.length; i++) {
-    const statement = createTypeStatements[i];
+const otherStatements = allStatements.filter(stmt => {
+  const upperStmt = stmt.toUpperCase().trim();
+  return upperStmt.length > 0 &&
+         !upperStmt.startsWith('CREATE EXTENSION') &&
+         !upperStmt.startsWith('CREATE TYPE') &&
+         !upperStmt.startsWith('CREATE TABLE') &&
+         !upperStmt.startsWith('CREATE INDEX') &&
+         !upperStmt.startsWith('--');
+});
+
+console.log(`🚀 Preparation: ${extensionStatements.length} extensions, ${createTypeStatements.length} types, ${createTableStatements.length} tables, ${indexStatements.length} indexes, ${otherStatements.length} other.`);
+
+const executeStatements = async (name, statements) => {
+  console.log(`📝 Executing ${name}...`);
+  for (let i = 0; i < statements.length; i++) {
+    const statement = statements[i];
     try {
       await query(statement);
-      console.log(`✅ Type ${i + 1}/${createTypeStatements.length} created successfully`);
+      console.log(`✅ ${name} ${i + 1}/${statements.length} successful`);
     } catch (error) {
       if (error.message.includes('already exists')) {
-        console.log(`ℹ️  Type ${i + 1}/${createTypeStatements.length} already exists (skipping)`);
+        console.log(`ℹ️  ${name} ${i + 1}/${statements.length} already exists (skipping)`);
       } else {
-        console.error(`❌ Type ${i + 1}/${createTypeStatements.length} failed:`, error.message);
-        console.error('Statement:', statement);
-        throw error;
-      }
-    }
-  }
-};
-
-// Then execute CREATE TABLE statements
-const createTables = async () => {
-  console.log('📝 Creating tables...');
-  for (let i = 0; i < createTableStatements.length; i++) {
-    const statement = createTableStatements[i];
-    try {
-      await query(statement);
-      console.log(`✅ Table ${i + 1}/${createTableStatements.length} created successfully`);
-    } catch (error) {
-      if (error.message.includes('already exists')) {
-        console.log(`ℹ️  Table ${i + 1}/${createTableStatements.length} already exists (skipping)`);
-      } else {
-        console.error(`❌ Table ${i + 1}/${createTableStatements.length} failed:`, error.message);
-        console.error('Statement:', statement);
-        throw error;
+        console.error(`❌ ${name} ${i + 1}/${statements.length} failed:`, error.message);
+        // console.error('Statement:', statement);
+        // Don't throw for everything, some might be minor
+        if (name === 'extensions' || name === 'types' || name === 'tables') throw error;
       }
     }
   }
 };
 
 // Execute in sequence
-createTypes().then(() => {
-  return createTables();
-}).then(() => {
-  console.log('🎉 All database objects created successfully!');
-}).catch(error => {
+async function run() {
+  await executeStatements('extensions', extensionStatements);
+  await executeStatements('types', createTypeStatements);
+  await executeStatements('tables', createTableStatements);
+  await executeStatements('indexes', indexStatements);
+  await executeStatements('others', otherStatements);
+  console.log('🎉 All database objects processed!');
+}
+
+run().catch(error => {
   console.error('❌ Database creation failed:', error);
 });
